@@ -93,15 +93,56 @@ UNIVERSITÉ DU QUÉBEC
 
 > Lequel de ces fichiers Python représente la logique de la machine à états décrite dans les diagrammes du document arc42? Est-ce que son implémentation est complète ou y a-t-il des éléments qui manquent? Illustrez votre réponse avec des extraits de code.
 
+Le fichier `order_saga_controller.py` implémente bien la machine à états décrite dans le diagramme : c’est lui qui orchestré les transitions entre étapes en maintenant `self.current_saga_state` et en invoquant les handlers appropriés. La logique centrale apparaît dans la boucle suivante :
 
+```Python
+        while self.current_saga_state is not OrderSagaState.COMPLETED:
+            if self.current_saga_state == OrderSagaState.CREATING_ORDER:
+                self.current_saga_state = self.create_order_handler.run()
+            elif self.current_saga_state == OrderSagaState.DECREASING_STOCK:
+                self.increase_stock_handler = DecreaseStockHandler(order_data["items"])
+                self.current_saga_state = self.increase_stock_handler.run()
+            else:
+                self.is_error_occurred = True
+                self.logger.debug(f"L'état saga n'est pas valide : {self.current_saga_state}")
+                self.current_saga_state = OrderSagaState.COMPLETED
+```
+
+Cependant, l’implémentation reste incomplète : plusieurs états clés du diagramme, comme `CREATING_PAYMENT` pour la création du paiement et les états de compensation `INCREASING_STOCK` et `CANCELLING_ORDER`, ne sont pas encore pris en charge. Aucune chaîne de rollback n’est orchestrée : en cas d’échec, le contrôleur ne déclenche pas les méthodes `rollback()` des étapes précédentes, ce qui empêche la compensation en ordre inverse. En conséquence, la saga fonctionne pour les deux premières transitions, mais ne couvre pas encore l’ensemble du cycle transactionnel prévu dans le diagramme d’états.
 
 ### **Question 2**
 
 > Lequel de ces fichiers Python déclenche la création ou suppression des commandes? Est-ce qu'il accède à une base de données directement pour le faire? Illustrez votre réponse avec des extraits de code.
 
+C’est le fichier `create_order_handler.py` qui déclenche la création et la suppression des commandes. Ce handler représente une étape concrète de la saga : il communique avec le Store Manager via l’API Gateway, mais **n’accède jamais directement à une base de données**. Toute interaction passe par des requêtes HTTP, comme le montrent les appels suivants :
+
+```Python
+response = requests.post(f'{config.API_GATEWAY_URL}/store-manager-api/orders',
+    json=self.order_data,
+    headers={'Content-Type': 'application/json'}
+)
+```
+
+Ici, la méthode `run()` envoie une requête `POST` au service store-manager-api pour créer la commande. En cas d’erreur ou d’annulation, la méthode `rollback()` effectue une requête `DELETE` vers le même service pour supprimer la commande :
+
+```Python
+response = requests.delete(f'{config.API_GATEWAY_URL}/store-manager-api/orders/{self.order_id}')
+```
+
 ### **Question 3**
 
 > Quelle requête dans la collection Postman du Labo 05 correspond à l'endpoint appelé dans create_order_handler.py? Illustrez votre réponse avec des captures d'écran ou extraits de code.
+
+L’endpoint appelé dans create_order_handler.py correspond à la requête `POST /store-manager-api/orders` de la collection Postman du Labo 05, utilisée pour créer une commande via l’API Gateway (ex: http://api-gateway:8080/store-manager-api/orders) :
+
+```Python
+response = requests.post(f'{config.API_GATEWAY_URL}/store-manager-api/orders',
+    json=self.order_data,
+    headers={'Content-Type': 'application/json'}
+)
+```
+
+![alt text](image.png)
 
 ### **Question 4**
 
