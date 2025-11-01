@@ -148,6 +148,26 @@ response = requests.post(f'{config.API_GATEWAY_URL}/store-manager-api/orders',
 
 > Quel endpoint avez-vous appelé pour modifier le stock? Quelles informations de la commande avez-vous utilisées? Illustrez votre réponse avec des extraits de code.
 
+Pour modifier le stock, j’ai appelé l’endpoint `PUT /store-manager-api/stocks` exposé par le Store Manager via l’API Gateway. Cette requête permet soit de diminuer le stock lors de la création de commande ("operation": "-"), soit de le rétablir en cas d’échec de paiement ("operation": "+"). Les informations utilisées proviennent directement de la commande, plus précisément de la liste des articles contenus dans `self.order_item_data`.
+
+
+```Python
+response = requests.put(
+    f"{config.API_GATEWAY_URL}/store-manager-api/stocks",
+    json={"items": self.order_item_data, "operation": "-"},
+    headers={"Content-Type": "application/json"},
+)
+```
+Et en cas d'erreur, voici le rollback :
+```Python
+response = requests.put(
+    f"{config.API_GATEWAY_URL}/store-manager-api/stocks",
+    json={"items": self.order_item_data, "operation": "+"},
+    headers={"Content-Type": "application/json"},
+)
+```
+![alt text](image-1.png)
+
 ### **Question 5**
 
 > Quel endpoint avez-vous appelé pour générer une transaction de paiement? Quelles informations de la commande avez-vous utilisées? Illustrez votre réponse avec des extraits de code.
