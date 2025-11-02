@@ -172,6 +172,23 @@ response = requests.put(
 
 > Quel endpoint avez-vous appelé pour générer une transaction de paiement? Quelles informations de la commande avez-vous utilisées? Illustrez votre réponse avec des extraits de code.
 
+Pour créer la transaction de paiement, j’ai appelé l’endpoint `POST /payments` via l’API Gateway. Cette requête envoie un corps JSON contenant les informations de la commande : le `user_id`, le `order_id` et le `total_amount` précédemment récupéré à partir du service Store Manager:
+
+```Python
+response = requests.post(
+    f"{config.API_GATEWAY_URL}/payments",
+    json={
+        "user_id": self.order_data["user_id"],
+        "order_id": self.order_id,
+        "amount": self.total_amount,
+    },
+    headers={"Content-Type": "application/json"},
+)
+```
+
+![alt text](image-2.png)
+
+
 ### **Question 6**
 
 > Quelle est la différence entre appeler l'orchestrateur Saga et appeler directement les endpoints des services individuels? Quels sont les avantages et inconvénients de chaque approche? Illustrez votre réponse avec des captures d'écran ou extraits de code.

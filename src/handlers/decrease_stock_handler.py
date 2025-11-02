@@ -41,7 +41,6 @@ class DecreaseStockHandler(Handler):
 
     def rollback(self):
         """Call StoreManager to revert stock check out (in other words, check-in the previously checked-out product and quantity)"""
-
         try:
             response = requests.put(
                 f"{config.API_GATEWAY_URL}/store-manager-api/stocks",
